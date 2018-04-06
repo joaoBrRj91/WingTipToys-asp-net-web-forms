@@ -1,21 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Security.Principal;
 using System.Web;
 using System.Web.Security;
+using System.Linq;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using Microsoft.AspNet.Identity;
+using WingTipToys.Models;
+using System.Collections.Generic;
 
 namespace WingTipToys
 {
     public partial class SiteMaster : MasterPage
     {
+        #region Fields
         private const string AntiXsrfTokenKey = "__AntiXsrfToken";
         private const string AntiXsrfUserNameKey = "__AntiXsrfUserName";
         private string _antiXsrfTokenValue;
+        #endregion
 
+        #region Handles Methods
         protected void Page_Init(object sender, EventArgs e)
         {
             // The code below helps to protect against XSRF attacks
@@ -71,11 +74,24 @@ namespace WingTipToys
         {
 
         }
+        #endregion
+
+
+        #region Methods
 
         protected void Unnamed_LoggingOut(object sender, LoginCancelEventArgs e)
         {
             Context.GetOwinContext().Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
         }
+
+        public IEnumerable<Category> GetCategories()
+        {
+            var db = new ProductContext();
+            IEnumerable<Category> query = db.Categories;
+            return query;
+        }
+
+        #endregion
     }
 
 }
