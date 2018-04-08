@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Web;
 using WingTipToys.Models;
@@ -14,7 +15,9 @@ namespace WingTipToys.Business
 
         public string ShoppingCartId { get; set; }
 
-        private ProductContext productContext { get { return GetContext(); } set { productContext = value; } }
+        private decimal TotalCart;
+
+        private ProductContext productContext;
         #endregion
 
 
@@ -23,6 +26,7 @@ namespace WingTipToys.Business
         public void AddToCart(int productId)
         {
             ShoppingCartId = GetCartId();
+            var context = GetContext();
 
             var cartItem = productContext
                              .ShoppingCartItems
@@ -52,15 +56,19 @@ namespace WingTipToys.Business
                 cartItem.Quantity++;
             }
 
+
+            SaveChangesModel();
         }
 
         public IEnumerable<CartItem> GetCartItems()
         {
 
             ShoppingCartId = GetCartId();
+            var context = GetContext();
 
             return productContext
                      .ShoppingCartItems
+                     .Include(p => p.Product)
                      .Where(c=>c.CartId == ShoppingCartId)
                      .AsEnumerable();
 
@@ -88,13 +96,37 @@ namespace WingTipToys.Business
             return HttpContext.Current.Session[CartSessionkey].ToString();
         }
 
+        public decimal GetTotal()
+        {
+
+            if (TotalCart != 0)
+                return TotalCart;
+            else
+            {
+
+                ShoppingCartId = GetCartId();
+                var context = GetContext();
+                decimal? total = decimal.Zero;
+
+                total = (decimal?)(from cartItem in context.ShoppingCartItems
+                                   join productItem in context.Products on cartItem.ProductId equals productItem.ProductID
+                                   where cartItem.CartId == ShoppingCartId
+                                   select cartItem.Quantity * cartItem.Product.UnitPrice).Sum();
+
+                return TotalCart = total ?? decimal.Zero;
+            }
+            
+          
+        }
+
         #endregion
 
 
+        #region Disposibles for shopping cart and methods auxiliaries
 
-        #region Disposibles for shopping cart
         public void Dispose()
         {
+            ShoppingCartId = null;
             DisposibleContext();
         }
 
@@ -109,6 +141,8 @@ namespace WingTipToys.Business
 
         private void DisposibleContext() => productContext.Dispose();
 
+        private void SaveChangesModel()  => productContext.SaveChanges();
+        
         #endregion
 
     }
