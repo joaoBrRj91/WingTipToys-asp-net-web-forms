@@ -58,6 +58,7 @@
                         <li><a runat="server" href="~/About">About</a></li>
                         <li><a runat="server" href="~/Contact">Contact</a></li>
                         <li><a runat="server" href="~/ProductList">Products</a></li>
+                        <li><a runat="server" href="~/ShoppingCart" id="cartCount">&nbsp;</a></li>
 
                     </ul>
                     <asp:LoginView runat="server" ViewStateMode="Disabled">
@@ -106,7 +107,7 @@
                         </a>
                     </b>
                 </ItemTemplate>
-                <ItemSeparatorTemplate>  |  </ItemSeparatorTemplate>
+                <ItemSeparatorTemplate>|  </ItemSeparatorTemplate>
             </asp:ListView>
         </div>
 

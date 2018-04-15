@@ -7,6 +7,7 @@ using System.Web.UI.WebControls;
 using Microsoft.AspNet.Identity;
 using WingTipToys.Models;
 using System.Collections.Generic;
+using WingTipToys.Business;
 
 namespace WingTipToys
 {
@@ -77,13 +78,24 @@ namespace WingTipToys
         #endregion
 
 
-        #region Methods
+        
 
         protected void Unnamed_LoggingOut(object sender, LoginCancelEventArgs e)
         {
             Context.GetOwinContext().Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
         }
 
+
+        protected void Page_PreRender(object sender, EventArgs e)
+        {
+            using (ShoppingCartActions usersShoppingCart = new ShoppingCartActions())
+            {
+                string cartStr = string.Format("Cart ({0})", usersShoppingCart.GetCountCartItems());
+                cartCount.InnerText = cartStr;
+            }
+        }
+
+        #region Methods
         public IEnumerable<Category> GetCategories()
         {
             var db = new ProductContext();

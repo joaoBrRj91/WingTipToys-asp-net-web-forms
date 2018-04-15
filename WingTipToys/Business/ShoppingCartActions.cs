@@ -11,13 +11,17 @@ namespace WingTipToys.Business
     {
 
         #region Properties and fields
-        public const string CartSessionkey = "CART_ID";
+        private const string cartSessionkey = "CART_ID";
 
-        public string ShoppingCartId { get; set; }
+        private string shoppingCartId;
 
-        private decimal TotalCart;
+        private decimal totalCart;
+
+        private int totalCartItems;
 
         private ProductContext productContext;
+
+        private bool isChangeItemsOfTheShoppingCart = false;
         #endregion
 
 
@@ -25,12 +29,12 @@ namespace WingTipToys.Business
 
         public void AddToCart(int productId)
         {
-            ShoppingCartId = GetCartId();
+            shoppingCartId = GetCartId();
             var context = GetContext();
 
             var cartItem = productContext
                              .ShoppingCartItems
-                             .SingleOrDefault(c => c.CartId == ShoppingCartId && c.ProductId == productId);
+                             .SingleOrDefault(c => c.CartId == shoppingCartId && c.ProductId == productId);
 
 
             if (cartItem == null)
@@ -39,7 +43,7 @@ namespace WingTipToys.Business
                 cartItem = new CartItem
                 {
                     ItemId = Guid.NewGuid().ToString(),
-                    CartId = ShoppingCartId,
+                    CartId = shoppingCartId,
                     Quantity = 1,
                     DateCreated = DateTime.Now
                 };
@@ -63,60 +67,174 @@ namespace WingTipToys.Business
         public IEnumerable<CartItem> GetCartItems()
         {
 
-            ShoppingCartId = GetCartId();
+            shoppingCartId = GetCartId();
             var context = GetContext();
 
             return productContext
                      .ShoppingCartItems
                      .Include(p => p.Product)
-                     .Where(c=>c.CartId == ShoppingCartId)
+                     .Where(c => c.CartId == shoppingCartId)
                      .AsEnumerable();
 
         }
 
-        private string GetCartId()
+        public CartItem GetItemToCart()
         {
-           
-            if (HttpContext.Current.Session[CartSessionkey] == null)
+            var cartId = GetCartId();
+
+            return GetContext().ShoppingCartItems.Find(cartId);
+        }
+
+        public CartItem GetCartItemByCartIdAndProductId(string cartId, int productId)
+        {
+            return productContext.ShoppingCartItems.Where(i => i.CartId == cartId && i.ProductId == productId).FirstOrDefault();
+        }
+
+        public string GetCartId()
+        {
+
+            if (HttpContext.Current.Session[cartSessionkey] == null)
             {
                 // If the user is logged in the app we recupered the user name of the session
                 if (!String.IsNullOrWhiteSpace(HttpContext.Current.User.Identity.Name))
-                    HttpContext.Current.Session[CartSessionkey] = HttpContext.Current.User.Identity.Name;
+                    HttpContext.Current.Session[cartSessionkey] = HttpContext.Current.User.Identity.Name;
 
 
                 // If the user isn't logged in the app we created an guid id temporary
                 else
                 {
                     Guid tempCartId = Guid.NewGuid();
-                    HttpContext.Current.Session[CartSessionkey] = tempCartId.ToString();
+                    HttpContext.Current.Session[cartSessionkey] = tempCartId.ToString();
                 }
 
             }
 
-            return HttpContext.Current.Session[CartSessionkey].ToString();
+            return HttpContext.Current.Session[cartSessionkey].ToString();
         }
 
         public decimal GetTotal()
         {
 
-            if (TotalCart != 0)
-                return TotalCart;
+            if (totalCart > 0 && !isChangeItemsOfTheShoppingCart)
+                return totalCart;
             else
             {
-
-                ShoppingCartId = GetCartId();
-                var context = GetContext();
                 decimal? total = decimal.Zero;
+                var context = GetContext();
+                var cartId = GetCartId();
 
                 total = (decimal?)(from cartItem in context.ShoppingCartItems
                                    join productItem in context.Products on cartItem.ProductId equals productItem.ProductID
-                                   where cartItem.CartId == ShoppingCartId
+                                   where cartItem.CartId == cartId
                                    select cartItem.Quantity * cartItem.Product.UnitPrice).Sum();
 
-                return TotalCart = total ?? decimal.Zero;
+
+                return totalCart = total ?? decimal.Zero;
+
             }
-            
-          
+
+
+        }
+
+        public int GetCountCartItems()
+        {
+            shoppingCartId = GetCartId();
+            GetContext();
+
+            int? count = (from cartItem in productContext.ShoppingCartItems
+                          join productItem in productContext.Products on cartItem.ProductId equals productItem.ProductID
+                          where cartItem.CartId == shoppingCartId
+                          select (int?)cartItem.Quantity).Sum();
+
+            return totalCartItems = count ?? 0;
+
+        }
+
+        public void UpdateShoppingCartDatabase(ShoppinCartUpdates[] cartItemsUpdate)
+        {
+
+            try
+            {
+
+                foreach (var cartItem in cartItemsUpdate)
+                {
+
+                    if (cartItem.purchaseQuantity < 1 || cartItem.isRemovedItem)
+                        RemoveItem(cartItem);
+                    else
+                        UpdateItem(cartItem);
+                }
+
+                isChangeItemsOfTheShoppingCart = true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("ERROR: Unable to Update Cart in Database - Please contact the administrator of system" + ex.Message, ex);
+            }
+
+
+        }
+
+        public void UpdateItem(ShoppinCartUpdates cartItem)
+        {
+
+            try
+            {
+                GetContext();
+                shoppingCartId = GetCartId();
+
+                var itemUpdate = GetCartItemByCartIdAndProductId(shoppingCartId, cartItem.produtoId);
+
+                if (itemUpdate != null)
+                {
+                    itemUpdate.Quantity = cartItem.purchaseQuantity;
+                    SaveChangesModel();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("ERROR: Unable to Update item  of the Cart in Database - Please contact the administrator of system" + ex.Message, ex);
+
+            }
+        }
+
+        public void RemoveItem(ShoppinCartUpdates cartItem)
+        {
+
+            try
+            {
+                var context = GetContext();
+
+                var itemRemove = GetCartItemByCartIdAndProductId(shoppingCartId, cartItem.produtoId);
+
+                if (itemRemove != null) { context.ShoppingCartItems.Remove(itemRemove); SaveChangesModel(); }
+
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("ERROR: Unable to Remove item  of the Cart in Database - Please contact the administrator of system" + ex.Message, ex);
+
+            }
+
+        }
+
+        public void EmptyCart()
+        {
+
+            using (var context = GetContext())
+            {
+
+                var cartItems = context.ShoppingCartItems.Where(c => c.CartId == shoppingCartId).AsEnumerable();
+
+                foreach (var item in cartItems)
+                {
+                    context.ShoppingCartItems.Remove(item);
+                }
+
+                SaveChangesModel();
+            }
+
         }
 
         #endregion
@@ -126,7 +244,7 @@ namespace WingTipToys.Business
 
         public void Dispose()
         {
-            ShoppingCartId = null;
+            shoppingCartId = null;
             DisposibleContext();
         }
 
@@ -141,9 +259,19 @@ namespace WingTipToys.Business
 
         private void DisposibleContext() => productContext.Dispose();
 
-        private void SaveChangesModel()  => productContext.SaveChanges();
-        
+        private void SaveChangesModel() => productContext.SaveChanges();
+
         #endregion
 
     }
+
+
+    public struct ShoppinCartUpdates
+    {
+        public int produtoId;
+        public int purchaseQuantity;
+        public bool isRemovedItem;
+
+    }
+
 }

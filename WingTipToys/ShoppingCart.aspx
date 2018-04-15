@@ -1,7 +1,8 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="ShoppingCart.aspx.cs" Inherits="WingTipToys.ShoppingCart" %>
+
 <asp:Content ID="Content1" ContentPlaceHolderID="MainContent" runat="server">
 
-     <div id="ShoppingCartTitle" runat="server" class="ContentHead">
+    <div id="ShoppingCartTitle" runat="server" class="ContentHead">
         <h1>Shopping Cart</h1>
     </div>
 
@@ -15,15 +16,15 @@
         ItemType=" WingTipToys.Models.CartItem"
         SelectMethod="GetShoppingCartItems"
         CssClass="table table-striped table-bordered table-hover table-condensed">
-     
 
-         <EmptyDataTemplate>
-                <table>
-                    <tr>
-                        <td>No data was returned.</td>
-                    </tr>
-                </table>
-          </EmptyDataTemplate>
+
+        <EmptyDataTemplate>
+            <table>
+                <tr>
+                    <td>No data was returned.</td>
+                </tr>
+            </table>
+        </EmptyDataTemplate>
 
         <Columns>
             <asp:BoundField DataField="ProductId" HeaderText="ID" SortExpression="ProductId" />
@@ -51,7 +52,7 @@
             <asp:TemplateField HeaderText="Remove Item">
 
                 <ItemTemplate>
-                    <asp:CheckBox id="Remove"  runat="server"></asp:CheckBox>
+                    <asp:CheckBox ID="Remove" runat="server"></asp:CheckBox>
                 </ItemTemplate>
 
             </asp:TemplateField>
@@ -67,7 +68,18 @@
             <asp:Label ID="lblTotal" runat="server" EnableViewState="false"></asp:Label>
         </strong>
     </div>
-    <br/>
+    <br />
+    <table>
+        <tr>
+            <td>
+                <asp:Button  runat="server" ID="UpdateBtn" Text="Update" OnClick="UpdateBtn_Click"/>
+            </td>
+            <td>
+                <!-- Checkout Placeholder -->
+            </td>
+
+        </tr>
+    </table>
 
 </asp:Content>
 
